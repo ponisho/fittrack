@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitdays Progress Dashboard</title>
+<meta name="description" content="Dashboard local de progreso corporal a partir de datos exportados de Fitdays. 100% local, sin backend.">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0D1414">
+
+<!-- Tipografías (ver README para uso 100% offline) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#2BB5A0" stroke-width="2">
+        <circle cx="12" cy="12" r="8"/>
+        <line x1="12" y1="12" x2="15" y2="8"/>
+        <circle cx="12" cy="12" r="1.2" fill="#2BB5A0"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Fitdays Progress Dashboard</h1>
+      <p class="subtitle" id="recordCount">Sin datos cargados</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <label class="btn btn-primary" for="csvInput">Cargar CSV</label>
+    <input type="file" id="csvInput" accept=".csv,text/csv">
+    <button class="btn btn-danger" id="clearDataBtn">Borrar datos</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 1. Carga de CSV -->
+  <section id="uploadSection">
+    <h2 class="section-title"><span class="index">01</span> Cargar CSV de Fitdays</h2>
+    <p class="section-desc">Sube el archivo exportado desde la app o báscula Fitdays. Todo el procesamiento ocurre en tu navegador; ningún dato sale de este dispositivo.</p>
+    <div class="upload-zone" id="uploadZone">
+      <p>Arrastra tu archivo CSV aquí, o</p>
+      <label class="btn btn-primary" for="csvInput">Seleccionar archivo</label>
+      <div class="upload-status" id="uploadStatus"></div>
+    </div>
+  </section>
+
+  <div id="emptyState" class="empty-state" style="margin-top:32px;">
+    Todavía no hay datos. Carga un CSV de Fitdays para ver tu dashboard de progreso.
+  </div>
+
+  <div id="dashboardContent" class="hidden">
+
+    <!-- 2. Overall de progreso -->
+    <section>
+      <h2 class="section-title"><span class="index">02</span> Overall de progreso</h2>
+      <p class="section-desc">Comparación entre tu primer y último registro cargado, métrica por métrica.</p>
+      <div class="overview-grid" id="overviewGrid"></div>
+    </section>
+
+    <!-- 3. Semáforo -->
+    <section>
+      <h2 class="section-title"><span class="index">03</span> Semáforo de hallazgos</h2>
+      <p class="section-desc">Verde = avance claro · Amarillo = señal a vigilar · Rojo = alerta o retroceso.</p>
+      <div class="findings-tabs">
+        <button class="findings-tab active" data-flag="all">Todos</button>
+        <button class="findings-tab" data-flag="green">Verdes</button>
+        <button class="findings-tab" data-flag="amber">Amarillos</button>
+        <button class="findings-tab" data-flag="red">Rojos</button>
+      </div>
+      <div id="findingsList"></div>
+    </section>
+
+    <!-- 4. Gráficas -->
+    <section>
+      <h2 class="section-title"><span class="index">04</span> Gráficas</h2>
+      <p class="section-desc">Evolución completa de tus registros, del más antiguo al más reciente.</p>
+      <div class="charts-grid" id="chartsGrid">
+        <div class="chart-card"><h3>Peso, IMC y grasa corporal</h3><div class="chart-wrap"><canvas id="chartWeightBmiFat"></canvas></div></div>
+        <div class="chart-card"><h3>Masa grasa vs masa muscular</h3><div class="chart-wrap"><canvas id="chartFatVsMuscle"></canvas></div></div>
+        <div class="chart-card"><h3>Agua corporal y proteína</h3><div class="chart-wrap"><canvas id="chartWaterProtein"></canvas></div></div>
+        <div class="chart-card"><h3>Grasa visceral</h3><div class="chart-wrap"><canvas id="chartVisceral"></canvas></div></div>
+        <div class="chart-card"><h3>Body score</h3><div class="chart-wrap"><canvas id="chartBodyScore"></canvas></div></div>
+        <div class="chart-card"><h3>Metabolismo basal (BMR)</h3><div class="chart-wrap"><canvas id="chartBmr"></canvas></div></div>
+        <div class="chart-card"><h3>Edad corporal</h3><div class="chart-wrap"><canvas id="chartBodyAge"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- 5. Tabla -->
+    <section>
+      <h2 class="section-title"><span class="index">05</span> Tabla de registros</h2>
+      <p class="section-desc">Todos los registros procesados, de más antiguo a más reciente.</p>
+      <div class="table-scroll" id="tableWrap"></div>
+    </section>
+
+  </div>
+
+</div>
+
+<footer class="app-footer">
+  Fitdays Progress Dashboard — 100% local · sin backend · sin envío de datos a internet
+</footer>
+
+<!-- Chart.js vía CDN. Para uso 100% offline, descarga y sirve una copia local — ver README.md -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
