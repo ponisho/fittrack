@@ -66,6 +66,38 @@ const MONTHS = {
 
 const STORAGE_KEY = 'fitdays_dashboard_records_v1';
 
+// Detecta columnas de análisis segmental, tolerante a variaciones de Fitdays
+// (p.ej. el typo "repot_" en vez de "report_", mayúsculas mixtas como "left_Arm").
+// Formato de celda esperado: "(0.9kg/150.2%/Standard)"
+const SEGMENTAL_HEADER_RE = /^repor?t_?(.+?)-@(Segmental fat analysis|Muscle balance)$/i;
+
+const BODY_PARTS = [
+  { key: 'leftArm',  label: 'Brazo izquierdo',  svgId: 'part-leftArm' },
+  { key: 'rightArm', label: 'Brazo derecho',    svgId: 'part-rightArm' },
+  { key: 'trunk',    label: 'Tronco',           svgId: 'part-trunk' },
+  { key: 'leftLeg',  label: 'Pierna izquierda', svgId: 'part-leftLeg' },
+  { key: 'rightLeg', label: 'Pierna derecha',   svgId: 'part-rightLeg' },
+];
+
+function canonicalBodyPart(rawPart) {
+  const s = rawPart.toLowerCase();
+  const isLeft = s.includes('left');
+  const isRight = s.includes('right');
+  if (s.includes('arm')) return isLeft ? 'leftArm' : (isRight ? 'rightArm' : null);
+  if (s.includes('leg')) return isLeft ? 'leftLeg' : (isRight ? 'rightLeg' : null);
+  if (s.includes('trunk')) return 'trunk';
+  return null;
+}
+
+// Parsea celdas tipo "(0.9kg/150.2%/Standard)" -> {kg, pct, category}
+function parseSegmentalCell(raw) {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  const m = str.match(/^\(([\d.]+)kg\/([\d.]+)%\/(\S+)\)$/i);
+  if (!m) return null;
+  return { kg: parseFloat(m[1]), pct: parseFloat(m[2]), category: m[3] };
+}
+
 /* ============================================================
    2. PARSER — normalización de celdas y fechas
    ============================================================ */
@@ -152,6 +184,17 @@ function parseFitdaysCsv(text) {
       }
       row.__raw[header] = cellValue;
       row[header] = parseCell(cellValue);
+
+      const segMatch = header.match(SEGMENTAL_HEADER_RE);
+      if (segMatch) {
+        const part = canonicalBodyPart(segMatch[1]);
+        const kind = /segmental fat/i.test(segMatch[2]) ? 'fat' : 'muscle';
+        if (part) {
+          if (!row.__segmental) row.__segmental = {};
+          if (!row.__segmental[part]) row.__segmental[part] = {};
+          row.__segmental[part][kind] = parseSegmentalCell(cellValue);
+        }
+      }
     });
 
     if (row.__date) records.push(row);
@@ -587,6 +630,142 @@ function renderCharts(records) {
 }
 
 /* ============================================================
+   8b. SEGMENTAL — helpers y render (grasa/músculo por zona)
+   ============================================================ */
+
+function hasSegmentalData(records) {
+  return records.some((r) => r.__segmental && Object.keys(r.__segmental).length > 0);
+}
+
+function segValue(record, part, kind) {
+  return (record.__segmental && record.__segmental[part] && record.__segmental[part][kind])
+    ? record.__segmental[part][kind].kg
+    : null;
+}
+
+function firstLastSegmental(records, part, kind) {
+  let first = null, last = null;
+  for (const r of records) { const v = segValue(r, part, kind); if (v !== null) { first = v; break; } }
+  for (let i = records.length - 1; i >= 0; i--) { const v = segValue(records[i], part, kind); if (v !== null) { last = v; break; } }
+  return { first, last };
+}
+
+// Grasa: bajar es mejor. Músculo: subir/mantenerse es mejor. Umbral de "sin cambio": 0.15 kg.
+function classifySegmentalDelta(kind, diff) {
+  if (diff === null) return 'neutral';
+  const flat = 0.15;
+  if (Math.abs(diff) < flat) return 'amber';
+  if (kind === 'fat') return diff < 0 ? 'green' : 'red';
+  return diff > 0 ? 'green' : 'red';
+}
+
+// --- Tabla: último registro vs. el anterior ---
+function renderSegmentalCompareTable(records) {
+  const section = document.getElementById('segmentalCompareSection');
+  const wrap = document.getElementById('segmentalCompareWrap');
+
+  if (!hasSegmentalData(records)) { section.classList.add('hidden'); return; }
+  if (records.length < 2) {
+    section.classList.remove('hidden');
+    wrap.innerHTML = '<div class="empty-state">Se necesitan al menos 2 registros para comparar contra la medición anterior.</div>';
+    return;
+  }
+  section.classList.remove('hidden');
+
+  const prev = records[records.length - 2];
+  const curr = records[records.length - 1];
+
+  function buildRows(kind) {
+    return BODY_PARTS.map((p) => {
+      const prevVal = segValue(prev, p.key, kind);
+      const currVal = segValue(curr, p.key, kind);
+      const diff = (prevVal !== null && currVal !== null) ? (currVal - prevVal) : null;
+      const flag = classifySegmentalDelta(kind, diff);
+      return { label: p.label, prevVal, currVal, diff, flag };
+    }).filter((r) => r.prevVal !== null || r.currVal !== null);
+  }
+
+  function tableHtml(title, kind) {
+    const rows = buildRows(kind);
+    if (rows.length === 0) return '';
+    let html = `<h3>${title}</h3><table><thead><tr><th>Zona</th><th>Anterior</th><th>Actual</th><th>Dif.</th><th>Estado</th></tr></thead><tbody>`;
+    rows.forEach((r) => {
+      const sign = r.diff !== null && r.diff > 0 ? '+' : '';
+      html += `<tr>
+        <td>${r.label}</td>
+        <td>${r.prevVal !== null ? r.prevVal.toFixed(1) + 'kg' : '—'}</td>
+        <td>${r.currVal !== null ? r.currVal.toFixed(1) + 'kg' : '—'}</td>
+        <td>${r.diff !== null ? sign + r.diff.toFixed(1) + 'kg' : '—'}</td>
+        <td><span class="flag-pill ${r.flag === 'neutral' ? '' : r.flag}">${r.flag === 'neutral' ? 's/d' : r.flag}</span></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  wrap.innerHTML = `
+    <div class="table-scroll">${tableHtml('Grasa segmentaria (kg)', 'fat')}</div>
+    <div class="table-scroll" style="margin-top:14px;">${tableHtml('Balance muscular segmentario (kg)', 'muscle')}</div>
+  `;
+}
+
+// --- Mapa corporal: inicial vs. actual, con figura SVG coloreada ---
+let currentBodyMapKind = 'fat';
+
+function renderBodyMap(records) {
+  const section = document.getElementById('bodyMapSection');
+  if (!hasSegmentalData(records)) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+
+  const kind = currentBodyMapKind;
+  const cardsWrap = document.getElementById('bodyMapCards');
+  cardsWrap.innerHTML = '';
+
+  BODY_PARTS.forEach((p) => {
+    const { first, last } = firstLastSegmental(records, p.key, kind);
+    const diff = (first !== null && last !== null) ? (last - first) : null;
+    const flag = classifySegmentalDelta(kind, diff);
+
+    // Colorea la región correspondiente en la figura SVG.
+    const svgEl = document.getElementById(p.svgId);
+    if (svgEl) {
+      const colorVar = flag === 'green' ? 'var(--green)' : flag === 'red' ? 'var(--red)' : flag === 'amber' ? 'var(--amber)' : 'var(--surface-2)';
+      svgEl.setAttribute('fill', colorVar);
+      svgEl.style.fillOpacity = flag === 'neutral' ? '0.5' : '0.55';
+    }
+
+    if (first === null && last === null) return;
+
+    const card = document.createElement('div');
+    card.className = `metric-card flag-${flag === 'neutral' ? '' : flag}`.trim();
+    const sign = diff !== null && diff > 0 ? '+' : '';
+    card.innerHTML = `
+      <div class="metric-name">${p.label} · ${kind === 'fat' ? 'grasa' : 'músculo'}</div>
+      <div class="metric-values">
+        <span class="metric-final">${last !== null ? last.toFixed(1) + 'kg' : '—'}</span>
+        <span class="metric-initial">${first !== null ? first.toFixed(1) + 'kg' : '—'}</span>
+      </div>
+      <div class="metric-delta ${diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat'}">
+        ${diff !== null ? sign + diff.toFixed(1) + 'kg' : 'sin dato'}
+      </div>
+    `;
+    cardsWrap.appendChild(card);
+  });
+}
+
+function setupBodyMapTabs(records) {
+  const tabs = document.querySelectorAll('.bodymap-tab');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentBodyMapKind = tab.dataset.kind;
+      renderBodyMap(records);
+    });
+  });
+}
+
+/* ============================================================
    9. RENDER — Tabla final
    ============================================================ */
 
@@ -634,6 +813,9 @@ function renderAll(records) {
   renderFindings(overview);
   setupFindingsTabs(overview);
   renderCharts(records);
+  renderSegmentalCompareTable(records);
+  renderBodyMap(records);
+  setupBodyMapTabs(records);
   renderTable(records);
 }
 
