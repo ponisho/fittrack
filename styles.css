@@ -361,6 +361,50 @@ section {
   line-height: 1.45;
 }
 
+/* ---------------- Body map ---------------- */
+
+.bodymap-tab {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.bodymap-tab.active { background: var(--surface-2); color: var(--accent); border-color: var(--accent); }
+
+.body-map-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.body-figure-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.body-figure { width: 100%; height: auto; display: block; }
+.body-figure rect, .body-figure circle { transition: fill 0.2s ease; }
+
+.body-figure-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-faint);
+}
+
+.body-map-cards { grid-template-columns: 1fr; gap: 10px; }
+
+@media (max-width: 640px) {
+  .body-map-layout { grid-template-columns: 1fr; }
+  .body-figure-wrap { max-width: 220px; margin: 0 auto; }
+}
+
 /* ---------------- Charts ---------------- */
 
 .charts-grid {
