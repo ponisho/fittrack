@@ -12,7 +12,8 @@ const APP_SHELL = [
   './styles.css',
   './app.js',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './body-wireframe.png'
 ];
 
 // Instala el service worker y precachea el app shell.
