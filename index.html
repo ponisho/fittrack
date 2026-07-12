@@ -92,9 +92,41 @@
       </div>
     </section>
 
-    <!-- 5. Tabla -->
+    <!-- 5. Progreso segmental (último vs. anterior) -->
+    <section id="segmentalCompareSection" class="hidden">
+      <h2 class="section-title"><span class="index">05</span> Progreso segmental</h2>
+      <p class="section-desc">Grasa y balance muscular por zona del cuerpo: medición actual vs. la inmediatamente anterior.</p>
+      <div id="segmentalCompareWrap"></div>
+    </section>
+
+    <!-- 6. Mapa corporal (inicial vs. actual) -->
+    <section id="bodyMapSection" class="hidden">
+      <h2 class="section-title"><span class="index">06</span> Mapa corporal de progreso</h2>
+      <p class="section-desc">Comparación entre tu primer y último registro, por zona del cuerpo.</p>
+      <div class="findings-tabs">
+        <button class="bodymap-tab active" data-kind="fat">Grasa</button>
+        <button class="bodymap-tab" data-kind="muscle">Músculo</button>
+      </div>
+      <div class="body-map-layout">
+        <div class="body-figure-wrap">
+          <svg viewBox="0 0 200 340" class="body-figure">
+            <circle cx="100" cy="30" r="22" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.5"/>
+            <rect id="part-trunk"    x="70"  y="55"  width="60" height="110" rx="18" stroke="var(--border)" stroke-width="1.5"/>
+            <rect id="part-leftArm"  x="25"  y="60"  width="30" height="100" rx="14" stroke="var(--border)" stroke-width="1.5"/>
+            <rect id="part-rightArm" x="145" y="60"  width="30" height="100" rx="14" stroke="var(--border)" stroke-width="1.5"/>
+            <rect id="part-leftLeg"  x="75"  y="170" width="25" height="150" rx="12" stroke="var(--border)" stroke-width="1.5"/>
+            <rect id="part-rightLeg" x="100" y="170" width="25" height="150" rx="12" stroke="var(--border)" stroke-width="1.5"/>
+            <text x="40" y="55" class="body-figure-label">Izq.</text>
+            <text x="150" y="55" class="body-figure-label">Der.</text>
+          </svg>
+        </div>
+        <div class="overview-grid body-map-cards" id="bodyMapCards"></div>
+      </div>
+    </section>
+
+    <!-- 7. Tabla -->
     <section>
-      <h2 class="section-title"><span class="index">05</span> Tabla de registros</h2>
+      <h2 class="section-title"><span class="index">07</span> Tabla de registros</h2>
       <p class="section-desc">Todos los registros procesados, de más antiguo a más reciente.</p>
       <div class="table-scroll" id="tableWrap"></div>
     </section>
