@@ -109,16 +109,14 @@
       </div>
       <div class="body-map-layout">
         <div class="body-figure-wrap">
-          <svg viewBox="0 0 200 340" class="body-figure">
-            <circle cx="100" cy="30" r="22" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1.5"/>
-            <rect id="part-trunk"    x="70"  y="55"  width="60" height="110" rx="18" stroke="var(--border)" stroke-width="1.5"/>
-            <rect id="part-leftArm"  x="25"  y="60"  width="30" height="100" rx="14" stroke="var(--border)" stroke-width="1.5"/>
-            <rect id="part-rightArm" x="145" y="60"  width="30" height="100" rx="14" stroke="var(--border)" stroke-width="1.5"/>
-            <rect id="part-leftLeg"  x="75"  y="170" width="25" height="150" rx="12" stroke="var(--border)" stroke-width="1.5"/>
-            <rect id="part-rightLeg" x="100" y="170" width="25" height="150" rx="12" stroke="var(--border)" stroke-width="1.5"/>
-            <text x="40" y="55" class="body-figure-label">Izq.</text>
-            <text x="150" y="55" class="body-figure-label">Der.</text>
-          </svg>
+          <div class="body-photo-frame">
+            <img src="./body-wireframe.png" alt="Figura de referencia corporal (wireframe)" class="body-photo">
+            <div class="body-callout" id="callout-leftArm"  style="left:15%; top:40%;"><span class="callout-label">Brazo izq.</span><span class="callout-value">—</span></div>
+            <div class="body-callout" id="callout-rightArm" style="left:85%; top:40%;"><span class="callout-label">Brazo der.</span><span class="callout-value">—</span></div>
+            <div class="body-callout" id="callout-trunk"    style="left:50%; top:26%;"><span class="callout-label">Tronco</span><span class="callout-value">—</span></div>
+            <div class="body-callout" id="callout-leftLeg"  style="left:38%; top:78%;"><span class="callout-label">Pierna izq.</span><span class="callout-value">—</span></div>
+            <div class="body-callout" id="callout-rightLeg" style="left:62%; top:78%;"><span class="callout-label">Pierna der.</span><span class="callout-value">—</span></div>
+          </div>
         </div>
         <div class="overview-grid body-map-cards" id="bodyMapCards"></div>
       </div>
