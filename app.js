@@ -726,12 +726,15 @@ function renderBodyMap(records) {
     const diff = (first !== null && last !== null) ? (last - first) : null;
     const flag = classifySegmentalDelta(kind, diff);
 
-    // Colorea la región correspondiente en la figura SVG.
-    const svgEl = document.getElementById(p.svgId);
-    if (svgEl) {
-      const colorVar = flag === 'green' ? 'var(--green)' : flag === 'red' ? 'var(--red)' : flag === 'amber' ? 'var(--amber)' : 'var(--surface-2)';
-      svgEl.setAttribute('fill', colorVar);
-      svgEl.style.fillOpacity = flag === 'neutral' ? '0.5' : '0.55';
+    // Actualiza el callout posicionado sobre la imagen del cuerpo.
+    const callout = document.getElementById(`callout-${p.key}`);
+    if (callout) {
+      callout.className = `body-callout flag-${flag === 'neutral' ? '' : flag}`.trim();
+      const sign = diff !== null && diff > 0 ? '+' : '';
+      const valueText = last !== null
+        ? `${last.toFixed(1)}kg${diff !== null ? ` (${sign}${diff.toFixed(1)})` : ''}`
+        : 's/d';
+      callout.innerHTML = `<span class="callout-label">${p.label}</span><span class="callout-value">${valueText}</span>`;
     }
 
     if (first === null && last === null) return;
