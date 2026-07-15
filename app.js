@@ -64,12 +64,61 @@ const MONTHS = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
 };
 
+// Equivalencias de encabezados entre exports de Fitdays en distintos idiomas.
+// Clave = nombre canónico interno (el que usa CONFIG.metrics); valor = variantes
+// conocidas (se comparan sin distinguir mayúsculas/acentos exactos vs. minúsculas).
+// Para soportar un idioma nuevo, solo agrega la variante correspondiente aquí.
+const DATE_HEADER_ALIASES = ['date', 'fecha'];
+
+const HEADER_ALIASES = {
+  'Weight': ['weight', 'peso'],
+  'BMI': ['bmi', 'imc'],
+  'Body Fat': ['body fat', 'grasa corporal'],
+  'Subcutaneous fat': ['subcutaneous fat', 'grasa subcutanea', 'grasa subcutánea'],
+  'Heart rate': ['heart rate', 'frecuencia cardíaca', 'frecuencia cardiaca'],
+  'Cardiac Index': ['cardiac index', 'índice cardíaco', 'indice cardiaco'],
+  'Visceral Fat': ['visceral fat', 'grasa visceral'],
+  'Body Water': ['body water', 'agua corporal'],
+  'Skeletal Muscle': ['skeletal muscle', 'músculo esquelético', 'musculo esqueletico'],
+  'Muscle mass': ['muscle mass', 'masa muscular'],
+  'Bone Mass': ['bone mass', 'masa esquelética', 'masa esqueletica'],
+  'Protein': ['protein', 'proteína', 'proteina'],
+  'BMR': ['bmr'],
+  'Body age': ['body age', 'edad corporal'],
+  'Fat mass': ['fat mass', 'masa grasa'],
+  'Water weight': ['water weight', 'contenido de agua'],
+  'Muscle rate': ['muscle rate', 'frecuencia muscular'],
+  'Protein mass': ['protein mass', 'cantidad de proteína', 'cantidad de proteina'],
+  'Obesity': ['obesity', 'obesidad'],
+  'Fat-free Body Weight': ['fat-free body weight', 'pérdida de grasa', 'perdida de grasa'],
+  'SMI': ['smi'],
+  'Body score': ['body score', 'puntuación corporal', 'puntuacion corporal'],
+  'Recommended target weight': ['recommended target weight', 'peso objetivo recomendado'],
+  'Weight control': ['weight control', 'control de peso'],
+  'Fat control': ['fat control', 'control de grasa'],
+  'Muscle control': ['muscle control', 'control muscular'],
+};
+
+// Índice invertido para búsqueda rápida: alias en minúsculas -> nombre canónico.
+const ALIAS_LOOKUP = {};
+Object.entries(HEADER_ALIASES).forEach(([canonical, aliases]) => {
+  aliases.forEach((alias) => { ALIAS_LOOKUP[alias.toLowerCase()] = canonical; });
+});
+
+// Devuelve el nombre canónico (inglés, el que usa CONFIG) para cualquier encabezado
+// reconocido; si no se reconoce, devuelve el encabezado tal cual (tolerante a
+// columnas nuevas o de otro idioma no mapeado todavía).
+function canonicalizeHeader(rawHeader) {
+  const key = rawHeader.trim().toLowerCase();
+  return ALIAS_LOOKUP[key] || rawHeader.trim();
+}
+
 const STORAGE_KEY = 'fitdays_dashboard_records_v1';
 
 // Detecta columnas de análisis segmental, tolerante a variaciones de Fitdays
 // (p.ej. el typo "repot_" en vez de "report_", mayúsculas mixtas como "left_Arm").
 // Formato de celda esperado: "(0.9kg/150.2%/Standard)"
-const SEGMENTAL_HEADER_RE = /^repor?t_?(.+?)-@(Segmental fat analysis|Muscle balance)$/i;
+const SEGMENTAL_HEADER_RE = /^(?:repor?t_?)?(.+?)-@(Segmental fat analysis|Análisis de obesidad segmentario|Analisis de obesidad segmentario|Muscle balance|Equilibrio muscular)$/i;
 
 const BODY_PARTS = [
   { key: 'leftArm',  label: 'Brazo izquierdo',  svgId: 'part-leftArm' },
@@ -124,19 +173,29 @@ function parseCell(raw) {
   };
 }
 
-// Convierte "08:02 Jul.05 2026" -> objeto Date
+// Convierte "08:02 Jul.05 2026" (inglés) o "08:19 11/07/2026" (español, DD/MM/YYYY) -> Date
 function parseFitdaysDate(str) {
   if (!str) return null;
-  const match = String(str).trim().match(/^(\d{2}):(\d{2})\s+([A-Za-z]{3})\.(\d{2})\s+(\d{4})$/);
-  if (!match) {
-    // Fallback tolerante: intenta que el navegador lo interprete directamente.
-    const fallback = new Date(str);
-    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  const s = String(str).trim();
+
+  // Formato inglés: "08:02 Jul.05 2026"
+  const enMatch = s.match(/^(\d{2}):(\d{2})\s+([A-Za-z]{3})\.(\d{2})\s+(\d{4})$/);
+  if (enMatch) {
+    const [, hh, mm, monStr, dd, yyyy] = enMatch;
+    const month = MONTHS[monStr.toLowerCase()];
+    if (month !== undefined) return new Date(Number(yyyy), month, Number(dd), Number(hh), Number(mm));
   }
-  const [, hh, mm, monStr, dd, yyyy] = match;
-  const month = MONTHS[monStr.toLowerCase()];
-  if (month === undefined) return null;
-  return new Date(Number(yyyy), month, Number(dd), Number(hh), Number(mm));
+
+  // Formato español: "08:19 11/07/2026" (día/mes/año)
+  const esMatch = s.match(/^(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (esMatch) {
+    const [, hh, mm, dd, mon, yyyy] = esMatch;
+    return new Date(Number(yyyy), Number(mon) - 1, Number(dd), Number(hh), Number(mm));
+  }
+
+  // Fallback tolerante: intenta que el navegador lo interprete directamente.
+  const fallback = new Date(s);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
 // Tokeniza una línea CSV respetando comillas (tolerante a comas dentro de "...").
@@ -177,18 +236,30 @@ function parseFitdaysCsv(text) {
     headers.forEach((header, idx) => {
       if (!header || header.toLowerCase().startsWith('unnamed')) return;
       const cellValue = cells[idx];
-      if (header === 'Date') {
+
+      if (DATE_HEADER_ALIASES.includes(header.trim().toLowerCase())) {
         row.__date = parseFitdaysDate(cellValue);
         row.__dateRaw = cellValue;
         return;
       }
-      row.__raw[header] = cellValue;
-      row[header] = parseCell(cellValue);
+
+      const canonicalKey = canonicalizeHeader(header);
+      // Algunos exports de Fitdays repiten un mismo nombre de columna dos veces
+      // (p.ej. "Skeletal Muscle"/"Skeletal muscle" en inglés, o exactamente
+      // "Músculo esquelético" dos veces en español). Para no perder datos por
+      // una columna pisando a la otra, solo la primera ocurrencia se guarda
+      // bajo el nombre canónico; la repetida se conserva aparte sin usarse.
+      if (Object.prototype.hasOwnProperty.call(row, canonicalKey)) {
+        row.__raw[`${canonicalKey}__dup`] = cellValue;
+      } else {
+        row.__raw[canonicalKey] = cellValue;
+        row[canonicalKey] = parseCell(cellValue);
+      }
 
       const segMatch = header.match(SEGMENTAL_HEADER_RE);
       if (segMatch) {
         const part = canonicalBodyPart(segMatch[1]);
-        const kind = /segmental fat/i.test(segMatch[2]) ? 'fat' : 'muscle';
+        const kind = /segmental fat|análisis de obesidad segmentario|analisis de obesidad segmentario/i.test(segMatch[2]) ? 'fat' : 'muscle';
         if (part) {
           if (!row.__segmental) row.__segmental = {};
           if (!row.__segmental[part]) row.__segmental[part] = {};
