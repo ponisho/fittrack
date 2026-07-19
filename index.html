@@ -102,7 +102,13 @@
     <!-- 6. Mapa corporal (inicial vs. actual) -->
     <section id="bodyMapSection" class="hidden">
       <h2 class="section-title"><span class="index">06</span> Mapa corporal de progreso</h2>
-      <p class="section-desc">Comparación entre tu primer y último registro, por zona del cuerpo.</p>
+      <p class="section-desc">Comparación por zona del cuerpo, según el periodo que elijas.</p>
+      <div class="findings-tabs">
+        <button class="bodymap-mode-tab active" data-mode="first">Primera vs. última</button>
+        <button class="bodymap-mode-tab" data-mode="previous">Anterior vs. última</button>
+        <button class="bodymap-mode-tab" data-mode="4weeks">Hace 4 semanas vs. última</button>
+      </div>
+      <p class="body-map-date-note" id="bodyMapDateNote"></p>
       <div class="findings-tabs">
         <button class="bodymap-tab active" data-kind="fat">Grasa</button>
         <button class="bodymap-tab" data-kind="muscle">Músculo</button>
