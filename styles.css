@@ -363,6 +363,25 @@ section {
 
 /* ---------------- Body map ---------------- */
 
+.bodymap-mode-tab {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.bodymap-mode-tab.active { background: var(--surface-2); color: var(--accent); border-color: var(--accent); }
+
+.body-map-date-note {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+}
+
 .bodymap-tab {
   font-family: var(--font-mono);
   font-size: 0.8rem;
