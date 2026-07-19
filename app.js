@@ -721,6 +721,44 @@ function firstLastSegmental(records, part, kind) {
   return { first, last };
 }
 
+const FOUR_WEEKS_MS = 28 * 24 * 60 * 60 * 1000;
+
+// Resuelve qué registro usar como "punto de comparación" según el modo elegido
+// en el mapa corporal. Devuelve { record, note } — note explica si hubo que usar
+// un respaldo (p.ej. no hay 4 semanas de historial todavía).
+function resolveCompareRecord(records, mode) {
+  const curr = records[records.length - 1];
+
+  if (mode === 'previous') {
+    if (records.length < 2) return { record: null, note: 'Solo hay un registro; no hay medición anterior con la cual comparar.' };
+    return { record: records[records.length - 2], note: null };
+  }
+
+  if (mode === '4weeks') {
+    const targetTime = curr.__date.getTime() - FOUR_WEEKS_MS;
+    const earliest = records[0];
+    if (earliest.__date.getTime() > targetTime) {
+      // Aún no hay 4 semanas de historial: usamos el registro más antiguo disponible.
+      return { record: earliest, note: 'Todavía no tienes 4 semanas de historial — se usa tu registro más antiguo disponible.' };
+    }
+    // Busca el registro cuya fecha esté más cerca de "hace 4 semanas".
+    let closest = records[0];
+    let closestDiff = Math.abs(records[0].__date.getTime() - targetTime);
+    for (const r of records) {
+      const diff = Math.abs(r.__date.getTime() - targetTime);
+      if (diff < closestDiff) { closest = r; closestDiff = diff; }
+    }
+    return { record: closest, note: null };
+  }
+
+  // mode === 'first' (default)
+  return { record: records[0], note: null };
+}
+
+function fmtShortDate(date) {
+  return date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 // Grasa: bajar es mejor. Músculo: subir/mantenerse es mejor. Umbral de "sin cambio": 0.15 kg.
 function classifySegmentalDelta(kind, diff) {
   if (diff === null) return 'neutral';
@@ -780,8 +818,9 @@ function renderSegmentalCompareTable(records) {
   `;
 }
 
-// --- Mapa corporal: inicial vs. actual, con figura SVG coloreada ---
+// --- Mapa corporal: comparación configurable (primera/anterior/4 semanas vs. actual) ---
 let currentBodyMapKind = 'fat';
+let currentBodyMapMode = 'first';
 
 function renderBodyMap(records) {
   const section = document.getElementById('bodyMapSection');
@@ -790,11 +829,32 @@ function renderBodyMap(records) {
 
   const kind = currentBodyMapKind;
   const cardsWrap = document.getElementById('bodyMapCards');
+  const dateNote = document.getElementById('bodyMapDateNote');
   cardsWrap.innerHTML = '';
 
+  const curr = records[records.length - 1];
+  const { record: refRecord, note } = resolveCompareRecord(records, currentBodyMapMode);
+
+  if (!refRecord) {
+    dateNote.textContent = note || 'No hay suficientes registros para esta comparación.';
+    BODY_PARTS.forEach((p) => {
+      const callout = document.getElementById(`callout-${p.key}`);
+      if (callout) {
+        callout.className = 'body-callout';
+        callout.innerHTML = `<span class="callout-label">${p.label}</span><span class="callout-value">s/d</span>`;
+      }
+    });
+    return;
+  }
+
+  dateNote.textContent = note
+    ? `${note} (${fmtShortDate(refRecord.__date)} → ${fmtShortDate(curr.__date)})`
+    : `Comparando: ${fmtShortDate(refRecord.__date)} → ${fmtShortDate(curr.__date)}`;
+
   BODY_PARTS.forEach((p) => {
-    const { first, last } = firstLastSegmental(records, p.key, kind);
-    const diff = (first !== null && last !== null) ? (last - first) : null;
+    const refVal = segValue(refRecord, p.key, kind);
+    const last = segValue(curr, p.key, kind);
+    const diff = (refVal !== null && last !== null) ? (last - refVal) : null;
     const flag = classifySegmentalDelta(kind, diff);
 
     // Actualiza el callout posicionado sobre la imagen del cuerpo.
@@ -808,7 +868,7 @@ function renderBodyMap(records) {
       callout.innerHTML = `<span class="callout-label">${p.label}</span><span class="callout-value">${valueText}</span>`;
     }
 
-    if (first === null && last === null) return;
+    if (refVal === null && last === null) return;
 
     const card = document.createElement('div');
     card.className = `metric-card flag-${flag === 'neutral' ? '' : flag}`.trim();
@@ -817,7 +877,7 @@ function renderBodyMap(records) {
       <div class="metric-name">${p.label} · ${kind === 'fat' ? 'grasa' : 'músculo'}</div>
       <div class="metric-values">
         <span class="metric-final">${last !== null ? last.toFixed(1) + 'kg' : '—'}</span>
-        <span class="metric-initial">${first !== null ? first.toFixed(1) + 'kg' : '—'}</span>
+        <span class="metric-initial">${refVal !== null ? refVal.toFixed(1) + 'kg' : '—'}</span>
       </div>
       <div class="metric-delta ${diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat'}">
         ${diff !== null ? sign + diff.toFixed(1) + 'kg' : 'sin dato'}
@@ -828,12 +888,22 @@ function renderBodyMap(records) {
 }
 
 function setupBodyMapTabs(records) {
-  const tabs = document.querySelectorAll('.bodymap-tab');
-  tabs.forEach((tab) => {
+  const kindTabs = document.querySelectorAll('.bodymap-tab');
+  kindTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-      tabs.forEach((t) => t.classList.remove('active'));
+      kindTabs.forEach((t) => t.classList.remove('active'));
       tab.classList.add('active');
       currentBodyMapKind = tab.dataset.kind;
+      renderBodyMap(records);
+    });
+  });
+
+  const modeTabs = document.querySelectorAll('.bodymap-mode-tab');
+  modeTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      modeTabs.forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentBodyMapMode = tab.dataset.mode;
       renderBodyMap(records);
     });
   });
