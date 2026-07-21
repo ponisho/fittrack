@@ -951,6 +951,7 @@ function renderAll(records) {
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('dashboardContent').classList.remove('hidden');
   document.getElementById('recordCount').textContent = `${records.length} registros · ${records[0].__date.toISOString().slice(0,10)} → ${records[records.length-1].__date.toISOString().slice(0,10)}`;
+  document.getElementById('exportReportBtn').style.display = '';
 
   const overview = buildOverview(records);
   renderOverview(overview);
@@ -966,6 +967,7 @@ function renderAll(records) {
 function showEmptyState() {
   document.getElementById('emptyState').classList.remove('hidden');
   document.getElementById('dashboardContent').classList.add('hidden');
+  document.getElementById('exportReportBtn').style.display = 'none';
 }
 
 function handleFile(file) {
@@ -998,6 +1000,14 @@ function init() {
   const fileInput = document.getElementById('csvInput');
   const uploadZone = document.getElementById('uploadZone');
   const clearBtn = document.getElementById('clearDataBtn');
+  const exportBtn = document.getElementById('exportReportBtn');
+
+  exportBtn.addEventListener('click', () => {
+    const now = new Date();
+    document.getElementById('printGeneratedOn').textContent =
+      `Generado el ${now.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })} a las ${now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} — Fitdays Progress Dashboard (local, sin envío de datos a internet)`;
+    window.print();
+  });
 
   fileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
