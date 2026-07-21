@@ -580,3 +580,86 @@ tbody tr:last-child td { border-bottom: none; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ============================================================
+   IMPRESIÓN / EXPORTAR A PDF
+   Se activa solo al imprimir (Cmd/Ctrl+P, o "Compartir > Imprimir"
+   en iOS y luego "Guardar en Archivos"/"Enviar" desde la vista previa).
+   Convierte el dashboard oscuro en un reporte claro, limpio y legible
+   en papel, ocultando todo lo interactivo (botones, carga de CSV, pestañas).
+   ============================================================ */
+
+.print-only-header { display: none; }
+
+@media print {
+  /* --- Paleta clara para no gastar tinta/tóner con fondo oscuro --- */
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f4f6f5;
+    --border: #cfd8d6;
+    --text: #12201d;
+    --text-muted: #46605c;
+    --text-faint: #6b8682;
+  }
+
+  body { background: #ffffff !important; }
+
+  /* --- Oculta todo lo interactivo / no relevante en papel --- */
+  .app-header .header-actions,
+  #uploadSection,
+  #emptyState,
+  .findings-tabs,
+  .bodymap-mode-tab,
+  .bodymap-tab,
+  .body-map-date-note,
+  .app-footer {
+    display: none !important;
+  }
+
+  /* Header de pantalla se oculta; se usa el de solo-impresión en su lugar */
+  .app-header { display: none !important; }
+  .print-only-header {
+    display: block !important;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 12px;
+  }
+  .print-only-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+  .print-only-header p {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .container { max-width: 100%; padding: 0; }
+
+  /* --- Evita que tarjetas, filas de tabla y gráficas se corten a la mitad --- */
+  section { margin-top: 26px; break-inside: avoid-page; }
+  .metric-card, .finding-item, .chart-card, .body-figure-wrap { break-inside: avoid; }
+  table { break-inside: auto; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+
+  a[href]:after { content: ""; } /* evita que el navegador imprima URLs de links */
+
+  /* Gráficas: tamaño fijo y legible en papel en vez de 100% viewport */
+  .chart-card .chart-wrap { height: 220px; }
+  .charts-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Mapa corporal: imagen más pequeña para que quepa bien en la página */
+  .body-map-layout { grid-template-columns: 200px 1fr; }
+
+  /* Tarjetas de overview en 3 columnas para aprovechar el ancho de la hoja */
+  .overview-grid { grid-template-columns: repeat(3, 1fr); }
+
+  /* Tabla de registros: fuente más pequeña para que quepan más columnas */
+  table { font-size: 0.68rem; }
+}
