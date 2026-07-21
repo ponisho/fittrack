@@ -34,11 +34,17 @@
   <div class="header-actions">
     <label class="btn btn-primary" for="csvInput">Cargar CSV</label>
     <input type="file" id="csvInput" accept=".csv,text/csv">
+    <button class="btn" id="exportReportBtn" style="display:none;">Exportar reporte</button>
     <button class="btn btn-danger" id="clearDataBtn">Borrar datos</button>
   </div>
 </header>
 
 <div class="container">
+
+  <div class="print-only-header">
+    <h1>Fitdays Progress Dashboard — Reporte de progreso corporal</h1>
+    <p id="printGeneratedOn"></p>
+  </div>
 
   <!-- 1. Carga de CSV -->
   <section id="uploadSection">
